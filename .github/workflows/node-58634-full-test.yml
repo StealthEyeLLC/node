@@ -1,0 +1,51 @@
+name: Node 58634 full test
+
+on:
+  push:
+    branches:
+      - automation/node-58634-full-test-20260722-0904
+
+permissions:
+  contents: read
+
+jobs:
+  full-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct exact candidate
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name 'StealthEyeLLC'
+          git config user.email 'stealtheye@stealtheye.io'
+          git checkout --detach fbab4586118ccd225d06706fe6502e063354b765
+          git cherry-pick 5ba1be844f2c17c49979de825d55f6c9bed19231
+          test "$(git rev-parse HEAD^)" = fbab4586118ccd225d06706fe6502e063354b765
+          test "$(git rev-parse HEAD^{tree})" = 71e4dd94d770ce30f57f66743dc79e5be28e6a15
+          git diff --check HEAD^
+
+      - name: Configure
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./configure
+
+      - name: Full prescribed test
+        shell: bash
+        run: |
+          set -o pipefail
+          make -j2 test 2>&1 | tee node-58634-full-test.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-58634-full-test-log
+          path: node-58634-full-test.log
+          if-no-files-found: warn
+          retention-days: 7
